@@ -3,209 +3,146 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hardware Shop - SETA Scanner</title>
+    <title>ICR with Camera & Excel Storage</title>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        /* Global Styles */
-        body {
-            font-family: 'Arial', sans-serif;
-            margin: 0;
-            padding: 0;
-            color: #fff;
-            background: url('hardware-background.jpg') no-repeat center center fixed;
-            background-size: cover;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-        }
-
-        /* Header Section */
-        header {
-            text-align: center;
-            padding: 20px;
-            background: rgba(0, 0, 0, 0.8);
-            color: #ffd700;
-            border-bottom: 5px solid #ffcc00;
-            width: 100%;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-        }
-
-        header h1 {
-            font-size: 3em;
-            margin: 0;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-
-        header h2 {
-            font-size: 1.2em;
-            margin: 5px 0;
-            color: #ffcc00;
-        }
-
-        /* Camera Section */
-        #camera-section {
-            margin-top: 20px;
-            background: rgba(0, 0, 0, 0.7);
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-            padding: 20px;
-            width: 90%;
-            max-width: 600px;
-        }
-
-        #video {
-            width: 100%;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-        }
-
-        .button-container {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 10px;
-        }
-
-        /* Buttons */
-        button {
-            font-size: 1.1em;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            color: #333;
-            background: #ffd700;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-            transition: all 0.3s ease;
-        }
-
-        button:hover {
-            background: #ffcc00;
-            transform: scale(1.05);
-        }
-
-        /* Scanned Images Section */
-        #scanned-images {
-            margin-top: 20px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            justify-content: center;
-        }
-
-        .scanned-image {
-            width: 200px;
-            height: auto;
-            border: 3px solid #ffd700;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-        }
-
-        /* Footer */
-        footer {
-            text-align: center;
-            padding: 10px;
-            background: rgba(0, 0, 0, 0.8);
-            color: #ffd700;
-            width: 100%;
-            border-top: 5px solid #ffcc00;
-            margin-top: 20px;
-        }
-
-        footer p {
-            margin: 0;
-            font-size: 0.9em;
-        }
-    </style>
-</head>
-<body>
-    <!-- Header Section -->
-    <header>
-        <h1>SETA Hardware Shop</h1>
-        <h2>Invoice and Product Scanner</h2>
-    </header>
-
-    <!-- Main Camera Section -->
-    <main>
-        <section id="camera-section">
-            <video id="video" autoplay playsinline disablePictureInPicture></video>
-            <canvas id="canvas" style="display:none;"></canvas>
-            <div class="button-container">
-                <button id="flipCamera">Flip Camera</button>
-                <button id="captureButton">Scan</button>
+        body { font-family: Arial, sans-serif; text-align: center; margin: 0; background-color: #f9f9f9; }
+        .container { margin: 20px auto; padding: 20px; background-color: #fff; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); max-width: 600px; }
+        video, canvas { width: 100%; border-radius: 10px; margin-bottom: 10px; }
+        button { margin: 10px; padding: 10px; font-size: 16px; }
+        #outputAttributes { text-align: left; margin-top: 20px; }
+        p { margin: 5px 0; }
+        strong { color: #00796b; }
+        h3 { text
+            h3 { text-decoration: underline; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>ICR with Camera & Excel Storage</h1>
+    
+            <!-- Camera Section -->
+            <video id="camera" autoplay playsinline></video>
+            <canvas id="canvas" style="display: none;"></canvas>
+            <button id="captureButton">Capture Image</button>
+            <button id="exportButton">Export to Excel</button>
+    
+            <h3>Extracted Data</h3>
+            <div id="outputAttributes">
+                <p>Processing...</p>
             </div>
-        </section>
-
-        <!-- Scanned Images Section -->
-        <div id="scanned-images"></div>
-    </main>
-
-    <!-- Footer Section -->
-    <footer>
-        <p>&copy; 2024 SETA Hardware Shop. All rights reserved.</p>
-    </footer>
-
-    <script>
-        // DOM Elements
-        const video = document.getElementById('video');
-        const flipCameraBtn = document.getElementById('flipCamera');
-        const captureButton = document.getElementById('captureButton');
-        const canvas = document.getElementById('canvas');
-        const scannedImagesContainer = document.getElementById('scanned-images');
-        const ctx = canvas.getContext('2d');
-
-        // Variables
-        let currentStream = null;
-        let facingMode = 'environment'; // Default to back camera for scanning
-
-        // Function to start the camera
-        async function startCamera() {
-            // Stop current stream if it exists
-            if (currentStream) {
-                currentStream.getTracks().forEach(track => track.stop());
+        </div>
+    
+        <script>
+            const keywords = [
+                "Product name", "Colour", "Motor type", "Frequency", "Gross weight", "Ratio",
+                "Motor Frame", "Model", "Speed", "Quantity", "Voltage", "Material", "Type",
+                "Horse power", "Consinee", "LOT", "Stage", "Outlet", "Serial number", "Head Size",
+                "Delivery size", "Phase", "Size", "MRP", "Use before", "Height",
+                "Maximum Discharge Flow", "Discharge Range", "Assembled by", "Manufacture date",
+                "Company name", "Customer care number", "Seller Address", "Seller email", "GSTIN",
+                "Total amount", "Payment status", "Payment method", "Invoice date"
+            ];
+    
+            let extractedData = {};   // Stores extracted data for current run
+            let allData = [];         // Persistent data across runs
+    
+            // Access the camera and start streaming
+            const video = document.getElementById('camera');
+            const canvas = document.getElementById('canvas');
+            const captureButton = document.getElementById('captureButton');
+            const outputDiv = document.getElementById('outputAttributes');
+    
+            // Start the camera
+            async function startCamera() {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    video.srcObject = stream;
+                } catch (error) {
+                    alert('Camera access denied or unavailable');
+                    console.error('Error accessing camera:', error);
+                }
             }
-
-            // Get new stream based on the facing mode
-            try {
-                const constraints = {
-                    video: { facingMode }
-                };
-                currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-                video.srcObject = currentStream;
-            } catch (err) {
-                console.error('Error accessing camera:', err);
-                alert('Could not access camera. Please allow permissions.');
+    
+            // Capture image from camera
+            captureButton.addEventListener('click', () => {
+                const context = canvas.getContext('2d');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+                // Process the captured image
+                canvas.toBlob(blob => {
+                    const img = new Image();
+                    img.src = URL.createObjectURL(blob);
+                    img.onload = function() {
+                        processImage(img);
+                    };
+                }, 'image/png');
+            });
+    
+            // Process image with Tesseract
+            function processImage(img) {
+                outputDiv.innerHTML = "<p>Processing...</p>";
+                Tesseract.recognize(img, 'eng', { logger: m => console.log(m) })
+                    .then(({ data: { text } }) => {
+                        console.log("Extracted Text: ", text);
+                        processTextToAttributes(text);
+                    })
+                    .catch(err => {
+                        outputDiv.innerHTML = `<p style="color:red;">Error: ${err.message}</p>`;
+                    });
             }
-        }
-
-        // Capture Image
-        function captureImage() {
-            // Set canvas dimensions to match the video
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-
-            // Draw video frame on the canvas
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-            // Create an image element and display it below the video
-            const img = document.createElement('img');
-            img.src = canvas.toDataURL('image/png');
-            img.classList.add('scanned-image');
-            scannedImagesContainer.appendChild(img);
-        }
-
-        // Flip Camera
-        flipCameraBtn.addEventListener('click', () => {
-            facingMode = facingMode === 'environment' ? 'user' : 'environment'; // Toggle camera
+    
+            // Match keywords and display results
+            function processTextToAttributes(text) {
+                const lines = text.split("\n");
+                extractedData = {};
+    
+                keywords.forEach(keyword => {
+                    for (const line of lines) {
+                        const regex = new RegExp(`${keyword}\\s*[:\\-]?\\s*(.*)`, "i");
+                        const match = line.match(regex);
+                        if (match && match[1]) {
+                            extractedData[keyword] = match[1].trim();
+                            break;
+                        }
+                    }
+                    if (!extractedData[keyword]) {
+                        extractedData[keyword] = "Not Found";
+                    }
+                });
+    
+                allData.push(extractedData); // Store current data
+                displayData();
+            }
+    
+            // Display extracted data dynamically
+            function displayData() {
+                outputDiv.innerHTML = "";
+                for (const [key, value] of Object.entries(extractedData)) {
+                    outputDiv.innerHTML += `<p><strong>${key}:</strong> ${value}</p>`;
+                }
+            }
+    
+            // Export all data to Excel
+            document.getElementById('exportButton').addEventListener('click', () => {
+                const workbook = XLSX.utils.book_new();
+                const worksheetData = [keywords]; // Headers row
+                allData.forEach(data => {
+                    const row = keywords.map(key => data[key] || "Not Found");
+                    worksheetData.push(row);
+                });
+    
+                const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+                XLSX.utils.book_append_sheet(workbook, worksheet, "Extracted Data");
+                XLSX.writeFile(workbook, "Camera_Extracted_Data.xlsx");
+            });
+    
+            // Start the camera on page load
             startCamera();
-        });
-
-        // Capture Button Event
-        captureButton.addEventListener('click', captureImage);
-
-        // Initialize Camera on Page Load
-        startCamera();
-    </script>
-</body>
-</html>
+        </script>
+    </body>
+    </html>
+    
