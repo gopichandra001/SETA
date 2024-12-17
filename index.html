@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ICR with Camera & Excel Storage</title>
+    <title>ICR with Camera Flip & Excel Storage</title>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
@@ -14,135 +14,148 @@
         #outputAttributes { text-align: left; margin-top: 20px; }
         p { margin: 5px 0; }
         strong { color: #00796b; }
-        h3 { text
-            h3 { text-decoration: underline; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>ICR with Camera & Excel Storage</h1>
-    
-            <!-- Camera Section -->
-            <video id="camera" autoplay playsinline></video>
-            <canvas id="canvas" style="display: none;"></canvas>
-            <button id="captureButton">Capture Image</button>
-            <button id="exportButton">Export to Excel</button>
-    
-            <h3>Extracted Data</h3>
-            <div id="outputAttributes">
-                <p>Processing...</p>
-            </div>
+        h3 { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ICR with Camera Flip & Excel Storage</h1>
+
+        <!-- Camera Section -->
+        <video id="camera" autoplay playsinline></video>
+        <canvas id="canvas" style="display: none;"></canvas>
+        <button id="flipButton">Flip Camera</button>
+        <button id="captureButton">Capture Image</button>
+        <button id="exportButton">Export to Excel</button>
+
+        <h3>Extracted Data</h3>
+        <div id="outputAttributes">
+            <p>Processing...</p>
         </div>
-    
-        <script>
-            const keywords = [
-                "Product name", "Colour", "Motor type", "Frequency", "Gross weight", "Ratio",
-                "Motor Frame", "Model", "Speed", "Quantity", "Voltage", "Material", "Type",
-                "Horse power", "Consinee", "LOT", "Stage", "Outlet", "Serial number", "Head Size",
-                "Delivery size", "Phase", "Size", "MRP", "Use before", "Height",
-                "Maximum Discharge Flow", "Discharge Range", "Assembled by", "Manufacture date",
-                "Company name", "Customer care number", "Seller Address", "Seller email", "GSTIN",
-                "Total amount", "Payment status", "Payment method", "Invoice date"
-            ];
-    
-            let extractedData = {};   // Stores extracted data for current run
-            let allData = [];         // Persistent data across runs
-    
-            // Access the camera and start streaming
-            const video = document.getElementById('camera');
-            const canvas = document.getElementById('canvas');
-            const captureButton = document.getElementById('captureButton');
-            const outputDiv = document.getElementById('outputAttributes');
-    
-            // Start the camera
-            async function startCamera() {
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                    video.srcObject = stream;
-                } catch (error) {
-                    alert('Camera access denied or unavailable');
-                    console.error('Error accessing camera:', error);
+    </div>
+
+    <script>
+        const keywords = [
+            "Product name", "Colour", "Motor type", "Frequency", "Gross weight", "Ratio",
+            "Motor Frame", "Model", "Speed", "Quantity", "Voltage", "Material", "Type",
+            "Horse power", "Consinee", "LOT", "Stage", "Outlet", "Serial number", "Head Size",
+            "Delivery size", "Phase", "Size", "MRP", "Use before", "Height",
+            "Maximum Discharge Flow", "Discharge Range", "Assembled by", "Manufacture date",
+            "Company name", "Customer care number", "Seller Address", "Seller email", "GSTIN",
+            "Total amount", "Payment status", "Payment method", "Invoice date"
+        ];
+
+        let extractedData = {};   // Stores extracted data for current run
+        let allData = [];         // Persistent data across runs
+        let currentFacingMode = "environment"; // Start with the back camera
+        let stream = null;
+
+        const video = document.getElementById('camera');
+        const canvas = document.getElementById('canvas');
+        const flipButton = document.getElementById('flipButton');
+        const captureButton = document.getElementById('captureButton');
+        const outputDiv = document.getElementById('outputAttributes');
+
+        // Start the camera
+        async function startCamera() {
+            try {
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop()); // Stop the current stream
                 }
+                const constraints = {
+                    video: { facingMode: currentFacingMode }
+                };
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+            } catch (error) {
+                alert('Camera access denied or unavailable');
+                console.error('Error accessing camera:', error);
             }
-    
-            // Capture image from camera
-            captureButton.addEventListener('click', () => {
-                const context = canvas.getContext('2d');
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-                // Process the captured image
-                canvas.toBlob(blob => {
-                    const img = new Image();
-                    img.src = URL.createObjectURL(blob);
-                    img.onload = function() {
-                        processImage(img);
-                    };
-                }, 'image/png');
-            });
-    
-            // Process image with Tesseract
-            function processImage(img) {
-                outputDiv.innerHTML = "<p>Processing...</p>";
-                Tesseract.recognize(img, 'eng', { logger: m => console.log(m) })
-                    .then(({ data: { text } }) => {
-                        console.log("Extracted Text: ", text);
-                        processTextToAttributes(text);
-                    })
-                    .catch(err => {
-                        outputDiv.innerHTML = `<p style="color:red;">Error: ${err.message}</p>`;
-                    });
-            }
-    
-            // Match keywords and display results
-            function processTextToAttributes(text) {
-                const lines = text.split("\n");
-                extractedData = {};
-    
-                keywords.forEach(keyword => {
-                    for (const line of lines) {
-                        const regex = new RegExp(`${keyword}\\s*[:\\-]?\\s*(.*)`, "i");
-                        const match = line.match(regex);
-                        if (match && match[1]) {
-                            extractedData[keyword] = match[1].trim();
-                            break;
-                        }
-                    }
-                    if (!extractedData[keyword]) {
-                        extractedData[keyword] = "Not Found";
-                    }
-                });
-    
-                allData.push(extractedData); // Store current data
-                displayData();
-            }
-    
-            // Display extracted data dynamically
-            function displayData() {
-                outputDiv.innerHTML = "";
-                for (const [key, value] of Object.entries(extractedData)) {
-                    outputDiv.innerHTML += `<p><strong>${key}:</strong> ${value}</p>`;
-                }
-            }
-    
-            // Export all data to Excel
-            document.getElementById('exportButton').addEventListener('click', () => {
-                const workbook = XLSX.utils.book_new();
-                const worksheetData = [keywords]; // Headers row
-                allData.forEach(data => {
-                    const row = keywords.map(key => data[key] || "Not Found");
-                    worksheetData.push(row);
-                });
-    
-                const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
-                XLSX.utils.book_append_sheet(workbook, worksheet, "Extracted Data");
-                XLSX.writeFile(workbook, "Camera_Extracted_Data.xlsx");
-            });
-    
-            // Start the camera on page load
+        }
+
+        // Flip the camera
+        flipButton.addEventListener('click', () => {
+            currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
             startCamera();
-        </script>
-    </body>
-    </html>
-    
+        });
+
+        // Capture image from camera
+        captureButton.addEventListener('click', () => {
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Process the captured image
+            canvas.toBlob(blob => {
+                const img = new Image();
+                img.src = URL.createObjectURL(blob);
+                img.onload = function() {
+                    processImage(img);
+                };
+            }, 'image/png');
+        });
+
+        // Process image with Tesseract
+        function processImage(img) {
+            outputDiv.innerHTML = "<p>Processing...</p>";
+            Tesseract.recognize(img, 'eng', { logger: m => console.log(m) })
+                .then(({ data: { text } }) => {
+                    console.log("Extracted Text: ", text);
+                    processTextToAttributes(text);
+                })
+                .catch(err => {
+                    outputDiv.innerHTML = `<p style="color:red;">Error: ${err.message}</p>`;
+                });
+        }
+
+        // Match keywords and display results
+        function processTextToAttributes(text) {
+            const lines = text.split("\n");
+            extractedData = {};
+
+            keywords.forEach(keyword => {
+                for (const line of lines) {
+                    const regex = new RegExp(`${keyword}\\s*[:\\-]?\\s*(.*)`, "i");
+                    const match = line.match(regex);
+                    if (match && match[1]) {
+                        extractedData[keyword] = match[1].trim();
+                        break;
+                    }
+                }
+                if (!extractedData[keyword]) {
+                    extractedData[keyword] = "Not Found";
+                }
+            });
+
+            allData.push(extractedData); // Store current data
+            displayData();
+        }
+
+        // Display extracted data dynamically
+        function displayData() {
+            outputDiv.innerHTML = "";
+            for (const [key, value] of Object.entries(extractedData)) {
+                outputDiv.innerHTML += `<p><strong>${key}:</strong> ${value}</p>`;
+            }
+        }
+
+        // Export all data to Excel
+        document.getElementById('exportButton').addEventListener('click', () => {
+            const workbook = XLSX.utils.book_new();
+            const worksheetData = [keywords]; // Headers row
+            allData.forEach(data => {
+                const row = keywords.map(key => data[key] || "Not Found");
+                worksheetData.push(row);
+            });
+
+            const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Extracted Data");
+            XLSX.writeFile(workbook, "Camera_Extracted_Data.xlsx");
+        });
+
+        // Start the camera on page load
+        startCamera();
+    </script>
+</body>
+</html>
