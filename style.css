@@ -1,109 +1,147 @@
-/* Global Styles */
 body {
-    font-family: 'Arial', sans-serif;
+    font-family: Arial, sans-serif;
     margin: 0;
     padding: 0;
-    color: #fff; /* White text for contrast */
-    background: url('background.png') no-repeat center center fixed;
-    background-size: cover; /* Ensure the image covers the entire background */
+    background: #f5f5f5;
+    color: #333;
     display: flex;
     flex-direction: column;
-    justify-content: center;
     align-items: center;
-    height: 100vh; /* Full viewport height */
+    min-height: 100vh;
 }
 
-/* Header Styling */
 header {
     text-align: center;
     padding: 20px;
-    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
-    border-radius: 10px;
-    margin-bottom: 20px;
+    background: #00796b;
+    color: #fff;
+    width: 100%;
+    border-bottom: 5px solid #004d40;
 }
 
 header h1 {
-    font-size: 3em;
+    font-size: 2.5em;
     margin: 0;
-    text-transform: uppercase;
-    color: #ffd700; /* Gold color for the text to match the logo */
 }
 
 header h2 {
-    margin: 10px 0;
     font-size: 1.2em;
-    font-weight: 300;
-    color: #ffffff; /* White for subtitle */
+    margin: 10px 0 0;
 }
 
-/* Camera Section Styling */
 #camera-section {
-    position: relative;
-    width: 100%;
-    max-width: 600px;
-    margin-top: 20px;
-    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
-    padding: 10px;
+    margin: 20px 0;
+    background: #fff;
+    padding: 20px;
     border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    width: 90%;
+    max-width: 600px;
 }
 
-/* Video Element */
 #video {
     width: 100%;
     border-radius: 10px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
-/* Flip Button */
-.flip-btn {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background-color: rgba(255, 255, 255, 0.8);
-    border: none;
-    border-radius: 50%;
-    width: 50px;
-    height: 50px;
-    font-size: 1.2em;
-    cursor: pointer;
+canvas {
+    display: none;
+}
+
+.button-container {
     display: flex;
-    justify-content: center;
-    align-items: center;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    transition: all 0.3s ease;
+    justify-content: space-between;
+    margin-top: 10px;
 }
 
-.flip-btn:hover {
-    background-color: rgba(255, 255, 255, 1);
-}
-
-/* Capture Button */
-.capture-btn {
-    position: absolute;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: rgba(255, 255, 255, 0.8);
-    border: none;
-    border-radius: 50px;
+button {
+    font-size: 1em;
     padding: 10px 20px;
-    font-size: 1.2em;
+    border: none;
+    border-radius: 5px;
     cursor: pointer;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    font-weight: bold;
+    background: #00796b;
+    color: #fff;
     transition: all 0.3s ease;
 }
 
-.capture-btn:hover {
-    background-color: rgba(255, 255, 255, 1);
+button:hover {
+    background: #004d40;
 }
 
-/* Footer Styling */
-footer {
+#processing-text {
+    display: none;
+    font-size: 1.2em;
+    color: #00796b;
+    margin-top: 20px;
     text-align: center;
+}
+
+#comparison-result {
+    margin-top: 20px;
     padding: 10px;
-    background-color: rgba(0, 0, 0, 0.5);
-    color: #fff;
+    background: #fff;
+    border-radius: 5px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    text-align: center;
+    background-color: #f9f9f9;
+}
+
+header {
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px;
+}
+
+main {
+    margin: 20px;
+}
+
+video {
     width: 100%;
-    position: absolute;
-    bottom: 0;
+    max-width: 600px;
+    border: 2px solid #ccc;
+    border-radius: 10px;
+    margin-bottom: 10px;
+}
+
+canvas {
+    display: none;
+}
+
+.button-container button {
+    margin: 5px;
+    padding: 10px 20px;
+    font-size: 16px;
+    border: none;
+    background-color: #4CAF50;
+    color: white;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.button-container button:hover {
+    background-color: #45a049;
+}
+
+#processing-text {
+    font-size: 18px;
+    font-style: italic;
+    color: #555;
+}
+
+.hidden {
+    display: none;
+}
+
+#result {
+    margin-top: 20px;
+    font-size: 16px;
 }
