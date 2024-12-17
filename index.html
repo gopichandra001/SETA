@@ -3,158 +3,125 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ICR with Camera Flip & Excel Storage</title>
+    <title>Mobile ICR with Camera Flip</title>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; margin: 0; background-color: #f9f9f9; }
-        .container { margin: 20px auto; padding: 20px; background-color: #fff; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); max-width: 600px; }
-        video, canvas { width: 100%; border-radius: 10px; margin-bottom: 10px; }
-        button { margin: 10px; padding: 10px; font-size: 16px; }
-        #outputAttributes { text-align: left; margin-top: 20px; }
-        p { margin: 5px 0; }
-        strong { color: #00796b; }
-        h3 { text-decoration: underline; }
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; text-align: center; background-color: #f9f9f9; }
+        video, canvas { width: 100%; max-width: 500px; margin: 10px auto; border: 2px solid #00796b; border-radius: 10px; }
+        button { padding: 10px 20px; font-size: 16px; margin: 10px; border: none; background-color: #00796b; color: #fff; border-radius: 5px; cursor: pointer; }
+        button:hover { background-color: #004d40; }
+        h3 { text-decoration: underline; margin-top: 20px; }
+        #outputAttributes { text-align: left; margin: 20px auto; width: 90%; max-width: 500px; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>ICR with Camera Flip & Excel Storage</h1>
+    <h1>Mobile ICR with Camera Flip</h1>
 
-        <!-- Camera Section -->
-        <video id="camera" autoplay playsinline></video>
-        <canvas id="canvas" style="display: none;"></canvas>
-        <button id="flipButton">Flip Camera</button>
-        <button id="captureButton">Capture Image</button>
-        <button id="exportButton">Export to Excel</button>
+    <!-- Camera Feed -->
+    <video id="camera" autoplay playsinline></video>
+    <canvas id="canvas" style="display: none;"></canvas>
 
-        <h3>Extracted Data</h3>
-        <div id="outputAttributes">
-            <p>Processing...</p>
-        </div>
-    </div>
+    <!-- Buttons -->
+    <button id="flipButton">Flip Camera</button>
+    <button id="captureButton">Capture Image</button>
+    <button id="exportButton">Export to Excel</button>
+
+    <!-- Output -->
+    <h3>Extracted Data</h3>
+    <div id="outputAttributes">No data yet...</div>
 
     <script>
-        const keywords = [
-            "Product name", "Colour", "Motor type", "Frequency", "Gross weight", "Ratio",
-            "Motor Frame", "Model", "Speed", "Quantity", "Voltage", "Material", "Type",
-            "Horse power", "Consinee", "LOT", "Stage", "Outlet", "Serial number", "Head Size",
-            "Delivery size", "Phase", "Size", "MRP", "Use before", "Height",
-            "Maximum Discharge Flow", "Discharge Range", "Assembled by", "Manufacture date",
-            "Company name", "Customer care number", "Seller Address", "Seller email", "GSTIN",
-            "Total amount", "Payment status", "Payment method", "Invoice date"
-        ];
-
-        let extractedData = {};   // Stores extracted data for current run
-        let allData = [];         // Persistent data across runs
-        let currentFacingMode = "environment"; // Start with the back camera
+        const keywords = ["Product name", "Colour", "Motor type", "Frequency", "Gross weight", "Model", "Speed"];
+        let currentFacingMode = "environment"; // Start with back camera
         let stream = null;
+        let extractedData = {};
+        let allData = [];
 
         const video = document.getElementById('camera');
         const canvas = document.getElementById('canvas');
-        const flipButton = document.getElementById('flipButton');
-        const captureButton = document.getElementById('captureButton');
         const outputDiv = document.getElementById('outputAttributes');
 
-        // Start the camera
+        // Start Camera
         async function startCamera() {
             try {
-                if (stream) {
-                    stream.getTracks().forEach(track => track.stop()); // Stop the current stream
-                }
-                const constraints = {
-                    video: { facingMode: currentFacingMode }
-                };
-                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                if (stream) stream.getTracks().forEach(track => track.stop());
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: currentFacingMode, width: 1280, height: 720 }
+                });
                 video.srcObject = stream;
-            } catch (error) {
-                alert('Camera access denied or unavailable');
-                console.error('Error accessing camera:', error);
+            } catch (err) {
+                alert("Camera access denied or unavailable.");
+                console.error(err);
             }
         }
 
-        // Flip the camera
-        flipButton.addEventListener('click', () => {
+        // Flip Camera
+        document.getElementById('flipButton').addEventListener('click', () => {
             currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
             startCamera();
         });
 
-        // Capture image from camera
-        captureButton.addEventListener('click', () => {
+        // Capture Image
+        document.getElementById('captureButton').addEventListener('click', () => {
             const context = canvas.getContext('2d');
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // Process the captured image
             canvas.toBlob(blob => {
                 const img = new Image();
                 img.src = URL.createObjectURL(blob);
-                img.onload = function() {
-                    processImage(img);
-                };
-            }, 'image/png');
+                img.onload = () => processImage(img);
+            }, 'image/png', 1.0); // High-quality image
         });
 
-        // Process image with Tesseract
-        function processImage(img) {
+        // Process Image with Tesseract.js
+        async function processImage(img) {
             outputDiv.innerHTML = "<p>Processing...</p>";
-            Tesseract.recognize(img, 'eng', { logger: m => console.log(m) })
-                .then(({ data: { text } }) => {
-                    console.log("Extracted Text: ", text);
-                    processTextToAttributes(text);
-                })
-                .catch(err => {
-                    outputDiv.innerHTML = `<p style="color:red;">Error: ${err.message}</p>`;
-                });
+            const result = await Tesseract.recognize(img, 'eng', { logger: m => console.log(m) });
+            console.log("Extracted Text:", result.data.text);
+            processTextToAttributes(result.data.text);
         }
 
-        // Match keywords and display results
+        // Map Extracted Text to Keywords
         function processTextToAttributes(text) {
             const lines = text.split("\n");
             extractedData = {};
-
             keywords.forEach(keyword => {
-                for (const line of lines) {
-                    const regex = new RegExp(`${keyword}\\s*[:\\-]?\\s*(.*)`, "i");
-                    const match = line.match(regex);
-                    if (match && match[1]) {
-                        extractedData[keyword] = match[1].trim();
+                for (let line of lines) {
+                    if (line.includes(keyword)) {
+                        extractedData[keyword] = line.split(":")[1]?.trim() || "Not Found";
                         break;
                     }
                 }
-                if (!extractedData[keyword]) {
-                    extractedData[keyword] = "Not Found";
-                }
+                if (!extractedData[keyword]) extractedData[keyword] = "Not Found";
             });
 
-            allData.push(extractedData); // Store current data
+            allData.push(extractedData); // Append new data
             displayData();
         }
 
-        // Display extracted data dynamically
+        // Display Extracted Data
         function displayData() {
             outputDiv.innerHTML = "";
-            for (const [key, value] of Object.entries(extractedData)) {
+            Object.entries(extractedData).forEach(([key, value]) => {
                 outputDiv.innerHTML += `<p><strong>${key}:</strong> ${value}</p>`;
-            }
+            });
         }
 
-        // Export all data to Excel
+        // Export Data to Excel
         document.getElementById('exportButton').addEventListener('click', () => {
             const workbook = XLSX.utils.book_new();
-            const worksheetData = [keywords]; // Headers row
-            allData.forEach(data => {
-                const row = keywords.map(key => data[key] || "Not Found");
-                worksheetData.push(row);
-            });
+            const headers = keywords;
+            const data = allData.map(row => headers.map(key => row[key] || "Not Found"));
+            const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
 
-            const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
             XLSX.utils.book_append_sheet(workbook, worksheet, "Extracted Data");
-            XLSX.writeFile(workbook, "Camera_Extracted_Data.xlsx");
+            XLSX.writeFile(workbook, "Mobile_ICR_Data.xlsx");
         });
 
-        // Start the camera on page load
+        // Start Camera on Load
         startCamera();
     </script>
 </body>
