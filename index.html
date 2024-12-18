@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mobile ICR with Camera Flip</title>
+    <title>Dynamic OCR with Camera Flip</title>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 0; text-align: center; background-color: #f9f9f9; }
-        video, canvas { width: 100%; max-width: 500px; margin: 10px auto; border: 2px solid #00796b; border-radius: 10px; }
-        button { padding: 10px 20px; font-size: 16px; margin: 10px; border: none; background-color: #00796b; color: #fff; border-radius: 5px; cursor: pointer; }
+        body { font-family: Arial, sans-serif; text-align: center; margin: 0; background-color: #f9f9f9; }
+        .container { margin: 20px auto; padding: 20px; background-color: #fff; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); max-width: 600px; }
+        video, canvas { width: 100%; max-width: 500px; margin-bottom: 10px; border: 2px solid #00796b; border-radius: 10px; }
+        button { padding: 10px 20px; font-size: 16px; margin: 10px; background-color: #00796b; color: #fff; border: none; border-radius: 5px; cursor: pointer; }
         button:hover { background-color: #004d40; }
         h3 { text-decoration: underline; margin-top: 20px; }
         #outputAttributes { text-align: left; margin: 20px auto; width: 90%; max-width: 500px; }
@@ -18,42 +19,33 @@
     </style>
 </head>
 <body>
-    <h1>Mobile ICR with Camera Flip</h1>
+    <div class="container">
+        <h1>Dynamic OCR with Camera Flip</h1>
 
-    <!-- Camera Feed -->
-    <video id="camera" autoplay playsinline></video>
-    <canvas id="canvas" style="display: none;"></canvas>
+        <!-- Video and Canvas -->
+        <video id="camera" autoplay playsinline></video>
+        <canvas id="canvas" style="display: none;"></canvas>
 
-    <!-- Buttons -->
-    <button id="flipButton">Flip Camera</button>
-    <button id="captureButton">Capture Image</button>
-    <button id="exportButton">Export to Excel</button>
+        <!-- Buttons -->
+        <button id="flipButton">Flip Camera</button>
+        <button id="captureButton">Capture Image</button>
+        <button id="exportButton">Export to Excel</button>
 
-    <!-- Output -->
-    <h3>Extracted Data</h3>
-    <div id="outputAttributes">No data yet...</div>
+        <!-- Output -->
+        <h3>Extracted Data</h3>
+        <div id="outputAttributes">No data yet...</div>
+    </div>
 
     <script>
-        const keywords = [
-            "Product name", "Colour", "Motor type", "Frequency", "Gross weight", "Ratio",
-            "Motor Frame", "Model", "Speed", "Quantity", "Voltage", "Material", "Type",
-            "Horse power", "Consinee", "LOT", "Stage", "Outlet", "Serial number", "Head Size",
-            "Delivery size", "Phase", "Size", "MRP", "Use before", "Height",
-            "Maximum Discharge Flow", "Discharge Range", "Assembled by", "Manufacture date",
-            "Company name", "Customer care number", "Seller Address", "Seller email", "GSTIN",
-            "Total amount", "Payment status", "Payment method", "Invoice date"
-        ];
-
-        let currentFacingMode = "environment"; // Start with back camera
+        let currentFacingMode = "environment"; // Default to back camera
         let stream = null;
         let extractedData = {};
         let allData = [];
-
         const video = document.getElementById('camera');
         const canvas = document.getElementById('canvas');
         const outputDiv = document.getElementById('outputAttributes');
 
-        // Start Camera
+        // Start the Camera
         async function startCamera() {
             try {
                 if (stream) stream.getTracks().forEach(track => track.stop());
@@ -61,9 +53,9 @@
                     video: { facingMode: currentFacingMode, width: 1280, height: 720 }
                 });
                 video.srcObject = stream;
-            } catch (err) {
+            } catch (error) {
                 alert("Camera access denied or unavailable.");
-                console.error(err);
+                console.error(error);
             }
         }
 
@@ -84,39 +76,36 @@
                 const img = new Image();
                 img.src = URL.createObjectURL(blob);
                 img.onload = () => processImage(img);
-            }, 'image/png', 1.0); // High-quality image
+            }, 'image/png');
         });
 
-        // Process Image with Tesseract.js
+        // Process Image Using Tesseract.js
         async function processImage(img) {
             outputDiv.innerHTML = "<p>Processing...</p>";
             const result = await Tesseract.recognize(img, 'eng', { logger: m => console.log(m) });
             console.log("Extracted Text:", result.data.text);
-            processTextToAttributes(result.data.text);
+            processKeyValuePairs(result.data.text);
         }
 
-        // Map Extracted Text to Keywords
-        function processTextToAttributes(text) {
-            const lines = text.split("\n");
+        // Extract Key-Value Pairs and Index
+        function processKeyValuePairs(text) {
             extractedData = {};
+            const lines = text.split("\n");
 
-            keywords.forEach(keyword => {
-                let found = false;
-                for (let line of lines) {
-                    if (line.includes(keyword)) {
-                        extractedData[keyword] = line.split(":")[1]?.trim() || "-";
-                        found = true;
-                        break;
-                    }
+            lines.forEach((line, index) => {
+                const match = line.match(/^(.*?):\s*(.*)$/);
+                if (match) {
+                    extractedData[match[1].trim()] = match[2].trim();
+                } else {
+                    extractedData[`Line ${index + 1}`] = line.trim();
                 }
-                if (!found) extractedData[keyword] = "-";
             });
 
-            allData.push(extractedData); // Append new data
+            allData.push(extractedData);
             displayData();
         }
 
-        // Display Extracted Data
+        // Display Extracted Data in a Structured Format
         function displayData() {
             outputDiv.innerHTML = "";
             Object.entries(extractedData).forEach(([key, value]) => {
@@ -127,12 +116,12 @@
         // Export Data to Excel
         document.getElementById('exportButton').addEventListener('click', () => {
             const workbook = XLSX.utils.book_new();
-            const headers = keywords;
-            const data = allData.map(row => headers.map(key => row[key] || "-"));
-            const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
+            const headers = Object.keys(allData[0] || {});
+            const rows = allData.map(row => headers.map(key => row[key] || "-"));
 
+            const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
             XLSX.utils.book_append_sheet(workbook, worksheet, "Extracted Data");
-            XLSX.writeFile(workbook, "Mobile_ICR_Data.xlsx");
+            XLSX.writeFile(workbook, "Dynamic_ICR_Data.xlsx");
         });
 
         // Start Camera on Load
