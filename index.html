@@ -13,6 +13,8 @@
         button:hover { background-color: #004d40; }
         h3 { text-decoration: underline; margin-top: 20px; }
         #outputAttributes { text-align: left; margin: 20px auto; width: 90%; max-width: 500px; }
+        p { margin: 5px 0; }
+        strong { color: #00796b; }
     </style>
 </head>
 <body>
@@ -32,7 +34,16 @@
     <div id="outputAttributes">No data yet...</div>
 
     <script>
-        const keywords = ["Product name", "Colour", "Motor type", "Frequency", "Gross weight", "Model", "Speed"];
+        const keywords = [
+            "Product name", "Colour", "Motor type", "Frequency", "Gross weight", "Ratio",
+            "Motor Frame", "Model", "Speed", "Quantity", "Voltage", "Material", "Type",
+            "Horse power", "Consinee", "LOT", "Stage", "Outlet", "Serial number", "Head Size",
+            "Delivery size", "Phase", "Size", "MRP", "Use before", "Height",
+            "Maximum Discharge Flow", "Discharge Range", "Assembled by", "Manufacture date",
+            "Company name", "Customer care number", "Seller Address", "Seller email", "GSTIN",
+            "Total amount", "Payment status", "Payment method", "Invoice date"
+        ];
+
         let currentFacingMode = "environment"; // Start with back camera
         let stream = null;
         let extractedData = {};
@@ -88,14 +99,17 @@
         function processTextToAttributes(text) {
             const lines = text.split("\n");
             extractedData = {};
+
             keywords.forEach(keyword => {
+                let found = false;
                 for (let line of lines) {
                     if (line.includes(keyword)) {
-                        extractedData[keyword] = line.split(":")[1]?.trim() || "Not Found";
+                        extractedData[keyword] = line.split(":")[1]?.trim() || "-";
+                        found = true;
                         break;
                     }
                 }
-                if (!extractedData[keyword]) extractedData[keyword] = "Not Found";
+                if (!found) extractedData[keyword] = "-";
             });
 
             allData.push(extractedData); // Append new data
@@ -114,7 +128,7 @@
         document.getElementById('exportButton').addEventListener('click', () => {
             const workbook = XLSX.utils.book_new();
             const headers = keywords;
-            const data = allData.map(row => headers.map(key => row[key] || "Not Found"));
+            const data = allData.map(row => headers.map(key => row[key] || "-"));
             const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
 
             XLSX.utils.book_append_sheet(workbook, worksheet, "Extracted Data");
