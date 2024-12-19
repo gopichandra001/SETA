@@ -8,7 +8,7 @@ const keywords = [
     "Total amount", "Payment status", "Payment method", "Invoice date", "Warranty", 
     "Brand", "Motor horsepower", "Power", "Motor phase", "Engine type", "Tank capacity",
     "Head", "Usage/Application", "Weight", "Volts", "Hertz", "Frame", "Mounting", "Toll free number",
-    "Pipesize", "Manufacturer", "Office", "Size", "Ratio", "SR number", "volts", "weight", "RPM", 
+    "Pipesize", "Manufacturer", "Office", "Size", "Ratio", "SR/Serial number","volts", "weight", "RPM", 
     "frame", 
 ];
 
@@ -27,19 +27,25 @@ async function startCamera() {
     try {
         if (stream) stream.getTracks().forEach(track => track.stop());
         stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: currentFacingMode, width: 1280, height: 720 }
+            video: { facingMode: currentFacingMode, width: 640, height: 480 }
         });
         video.srcObject = stream;
+
+        video.addEventListener('loadeddata', () => {
+            console.log("Video feed is loaded and ready.");
+        });
+
+        console.log("Camera stream started successfully:", stream);
     } catch (err) {
-        alert("Camera access denied or unavailable.");
-        console.error(err);
+        alert("Camera access denied or unavailable. Please check permissions.");
+        console.error("Error accessing camera:", err);
     }
 }
 
 // Flip Camera
-document.getElementById('flipButton').addEventListener('click', () => {
+document.getElementById('flipButton').addEventListener('click', async () => {
     currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
-    startCamera();
+    await startCamera();
 });
 
 // Capture Image
