@@ -95,7 +95,7 @@ function processTextToAttributes(text) {
         if (!found) extractedData[keyword] = "-";
     });
 
-    // Set Product Name: Use 'Product name' if available, else fallback to 'Brand'
+    // If Product Name is missing, assign Brand value to Product Name
     if (!extractedData["Product name"] || extractedData["Product name"] === "-") {
         if (extractedData["Brand"] && extractedData["Brand"] !== "-") {
             extractedData["Product name"] = extractedData["Brand"];
