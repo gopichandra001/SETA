@@ -97,8 +97,9 @@ function processTextToAttributes(text) {
 
     // If Product Name is missing, assign Brand value to Product Name
     if (!extractedData["Product name"] || extractedData["Product name"] === "-") {
-        if (extractedData["Brand"] && extractedData["Brand"] !== "-") {
-            extractedData["Product name"] = extractedData["Brand"];
+        const brandLine = lines.find(line => line.includes("Brand"));
+        if (brandLine) {
+            extractedData["Product name"] = brandLine.split(":"[1]?.trim() || "-");
         }
     }
 
