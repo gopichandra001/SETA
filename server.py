@@ -1,25 +1,43 @@
 import easyocr
 import re
+import os
 
 # Initialize EasyOCR Reader
-reader = easyocr.Reader(['en'])
+def initialize_reader():
+    try:
+        reader = easyocr.Reader(['en'])
+        return reader
+    except Exception as e:
+        print("Error initializing EasyOCR Reader:", e)
+        return None
 
-# Load the image
-image_path = "image.png"  # Replace with the correct path to your image
+# Load and Process the Image
+def load_image(image_path):
+    if not os.path.exists(image_path):
+        print(f"Error: The image path '{image_path}' does not exist.")
+        return None
+    try:
+        print(f"Loading image from: {image_path}")
+        return image_path
+    except Exception as e:
+        print("Error loading image:", e)
+        return None
 
-# Perform OCR on the image
-results = reader.readtext(image_path)
+# Perform OCR on the Image
+def perform_ocr(reader, image_path):
+    try:
+        results = reader.readtext(image_path)
+        extracted_text = "\n".join([result[1] for result in results])
+        print("\nFull Extracted Text:")
+        print(extracted_text)
+        return extracted_text
+    except Exception as e:
+        print("Error performing OCR:", e)
+        return ""
 
-# Combine all extracted text
-extracted_text = "\n".join([result[1] for result in results])
-print("Full Extracted Text:")
-print(extracted_text)
-
-# Function to extract structured data
+# Function to Extract Structured Data
 def extract_structured_data(text):
     structured_data = {}
-
-    # Patterns for matching the fields
     patterns = {
         "Company Name": r"(?i)(Company Name|Company):\s*(.*)",
         "Address": r"(?i)(Address):\s*(.*)",
@@ -30,19 +48,41 @@ def extract_structured_data(text):
         "Invoice Date": r"(?i)(Invoice\s*Date|Date):\s*(.*)"
     }
 
-    # Match each pattern and extract data
     for field, pattern in patterns.items():
         match = re.search(pattern, text)
         if match:
-            structured_data[field] = match.group(2 if "Company" in field or "Address" in field else 1)
+            structured_data[field] = match.group(2 if "Company" in field or "Address" in field else 1).strip()
         else:
             structured_data[field] = "-"
-
     return structured_data
 
-# Extract and print structured data
-structured_data = extract_structured_data(extracted_text)
+# Main Execution
+def main():
+    # Path to the image
+    image_path = "image.png"  # Replace with the correct path to your image
 
-print("\nStructured Data:")
-for key, value in structured_data.items():
-    print(f"{key}: {value}")
+    # Initialize EasyOCR Reader
+    reader = initialize_reader()
+    if not reader:
+        return
+
+    # Load the Image
+    if not load_image(image_path):
+        return
+
+    # Perform OCR
+    extracted_text = perform_ocr(reader, image_path)
+    if not extracted_text:
+        return
+
+    # Extract Structured Data
+    structured_data = extract_structured_data(extracted_text)
+
+    # Print Structured Data
+    print("\nStructured Data:")
+    for key, value in structured_data.items():
+        print(f"{key}: {value}")
+
+# Run the Script
+if __name__ == "__main__":
+    main()
