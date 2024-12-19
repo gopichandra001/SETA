@@ -1,92 +1,134 @@
-const video = document.getElementById("video");
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
-const captureButton = document.getElementById("captureButton");
-const flipCameraBtn = document.getElementById("flipCamera");
-const processingText = document.getElementById("processing-text");
-const resultDiv = document.getElementById("result");
+const keywords = [
+    "Product name", "Colour", "Motor type", "Frequency", "Gross weight", "Ratio",
+    "Motor Frame", "Model", "Speed", "Quantity", "Voltage", "Material", "Type",
+    "Horse power", "Consinee", "LOT", "Stage", "Outlet", "Serial number", "Head Size",
+    "Delivery size", "Phase", "Size", "MRP", "Use before", "Height",
+    "Maximum Discharge Flow", "Discharge Range", "Assembled by", "Manufacture date",
+    "Company name", "Customer care number", "Seller Address", "Seller email", "GSTIN",
+    "Total amount", "Payment status", "Payment method", "Invoice date", "Warranty", 
+    "Brand", "Motor horsepower", "Power", "Motor phase", "Engine type", "Tank capacity",
+    "Head", "Usage/Application", "Weight", "Volts", "Hertz", "Frame", "Mounting", "Toll free number",
+    "Pipesize", "Manufacturer", "Office", "Size", "Ratio", "SR/Serial number"
+];
 
-let facingMode = "environment"; // Default to back camera
-let currentStream = null;
+let currentFacingMode = "environment";
+let stream = null;
+let extractedData = {};
+let allData = [];
 
-// Start the camera
+// Elements
+const video = document.getElementById('camera');
+const canvas = document.getElementById('canvas');
+const outputDiv = document.getElementById('outputAttributes');
+
+// Start Camera
 async function startCamera() {
     try {
-        if (currentStream) {
-            currentStream.getTracks().forEach((track) => track.stop());
-        }
-
-        const constraints = {
-            video: {
-                facingMode: facingMode,
-            },
-        };
-        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-        video.srcObject = currentStream;
-    } catch (error) {
-        console.error("Error accessing the camera:", error);
-        alert("Camera access is required for this feature.");
+        if (stream) stream.getTracks().forEach(track => track.stop());
+        stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: currentFacingMode, width: 1280, height: 720 }
+        });
+        video.srcObject = stream;
+    } catch (err) {
+        alert("Camera access denied or unavailable.");
+        console.error(err);
     }
 }
 
-// Capture the image and send it to the server
-captureButton.addEventListener("click", async () => {
-    console.log("Capture button clicked");
-    // Draw the video frame onto the canvas
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    // Convert the canvas image to Base64
-    const imageData = canvas.toDataURL("image/png");
-    console.log("Image captured and converted to Base64");
-
-    // Show processing text
-    processingText.classList.remove("hidden");
-
-    // Send the image to the server for processing
-    await sendImageToServer(imageData);
-});
-
-// Flip the camera
-flipCameraBtn.addEventListener("click", () => {
-    facingMode = facingMode === "environment" ? "user" : "environment";
+// Flip Camera
+document.getElementById('flipButton').addEventListener('click', () => {
+    currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
     startCamera();
 });
 
-// Send image to the server
-async function sendImageToServer(imageData) {
-    console.log("Sending image to server...");
+// Capture Image
+document.getElementById('captureButton').addEventListener('click', () => {
+    const context = canvas.getContext('2d');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    // Display the captured image for verification
+    canvas.toBlob(blob => {
+        const img = new Image();
+        img.src = URL.createObjectURL(blob);
+        img.onload = () => processImage(img);
+
+        // Uncomment the line below to display the captured image
+        // document.body.appendChild(img);
+    }, 'image/png');
+});
+
+// Process Image with Tesseract.js
+async function processImage(img) {
+    outputDiv.innerHTML = "<p>Processing...</p>";
     try {
-        const response = await fetch("http://193.186.4.139:5000/extract-text", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ image: imageData }),
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            console.error("Server error:", errorData);
-            throw new Error(errorData.error || "Failed to process the image.");
+        const result = await Tesseract.recognize(img, 'eng', { logger: m => console.log(m) });
+        if (result && result.data.text) {
+            console.log("OCR Result:", result.data.text);
+            processTextToAttributes(result.data.text);
+        } else {
+            outputDiv.innerHTML = "<p>No text detected. Please try again.</p>";
         }
-
-        const result = await response.json();
-        console.log("Extracted text:", result.text);
-        displayResult(result.text);
     } catch (error) {
-        console.error("Error:", error);
-        resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
-    } finally {
-        processingText.classList.add("hidden");
+        console.error("Tesseract Error:", error);
+        outputDiv.innerHTML = "<p>Error processing image. Please try again.</p>";
     }
 }
 
-// Display extracted text
-function displayResult(text) {
-    resultDiv.innerHTML = `<h3>Extracted Text:</h3><p>${text}</p>`;
+// Map Extracted Text to Keywords
+function processTextToAttributes(text) {
+    const lines = text.split("\n");
+    extractedData = {};
+    let unmatchedText = [];
+
+    keywords.forEach(keyword => {
+        let found = false;
+        for (let line of lines) {
+            if (line.includes(keyword)) {
+                extractedData[keyword] = line.split(":"[1]?.trim() || "-");
+                found = true;
+                break;
+            }
+        }
+        if (!found) extractedData[keyword] = "-";
+    });
+
+    lines.forEach(line => {
+        let isMatched = keywords.some(keyword => line.includes(keyword));
+        if (!isMatched) {
+            unmatchedText.push(line.trim());
+        }
+    });
+
+    if (unmatchedText.length > 0) {
+        extractedData["Other Specifications"] = unmatchedText.join("; ");
+    }
+
+    allData.push(extractedData);
+    displayData();
 }
 
-// Start the camera on page load
+// Display Data
+function displayData() {
+    outputDiv.innerHTML = "";
+    Object.entries(extractedData).forEach(([key, value]) => {
+        if (value !== "-") {
+            outputDiv.innerHTML += `<p><strong>${key}:</strong> ${value}</p>`;
+        }
+    });
+}
+
+// Export to Excel
+document.getElementById('exportButton').addEventListener('click', () => {
+    const workbook = XLSX.utils.book_new();
+    const headers = keywords.concat("Other Specifications");
+    const data = allData.map(row => headers.map(key => row[key] || "-"));
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
+
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Extracted Data");
+    XLSX.writeFile(workbook, "Camera_Extracted_Data.xlsx");
+});
+
+// Start Camera on Load
 startCamera();
