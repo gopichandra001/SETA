@@ -3,129 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dynamic OCR with Camera Flip</title>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <style>
-        body { font-family: Arial, sans-serif; text-align: center; margin: 0; background-color: #f9f9f9; }
-        .container { margin: 20px auto; padding: 20px; background-color: #fff; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); max-width: 600px; }
-        video, canvas { width: 100%; max-width: 500px; margin-bottom: 10px; border: 2px solid #00796b; border-radius: 10px; }
-        button { padding: 10px 20px; font-size: 16px; margin: 10px; background-color: #00796b; color: #fff; border: none; border-radius: 5px; cursor: pointer; }
-        button:hover { background-color: #004d40; }
-        h3 { text-decoration: underline; margin-top: 20px; }
-        #outputAttributes { text-align: left; margin: 20px auto; width: 90%; max-width: 500px; }
-        p { margin: 5px 0; }
-        strong { color: #00796b; }
-    </style>
+    <title>ICR with Camera Flip & Server</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <h1>Dynamic OCR with Camera Flip</h1>
+        <h1>ICR with Camera Flip & Excel Export</h1>
 
-        <!-- Video and Canvas -->
+        <!-- Video Feed and Buttons -->
         <video id="camera" autoplay playsinline></video>
         <canvas id="canvas" style="display: none;"></canvas>
 
-        <!-- Buttons -->
-        <button id="flipButton">Flip Camera</button>
-        <button id="captureButton">Capture Image</button>
-        <button id="exportButton">Export to Excel</button>
+        <div class="button-container">
+            <button id="flipButton">Flip Camera</button>
+            <button id="captureButton">Capture Image</button>
+            <button id="exportButton">Export to Excel</button>
+        </div>
 
-        <!-- Output -->
+        <!-- Extracted Data -->
         <h3>Extracted Data</h3>
         <div id="outputAttributes">No data yet...</div>
     </div>
 
-    <script>
-        let currentFacingMode = "environment"; // Default to back camera
-        let stream = null;
-        let extractedData = {};
-        let allData = [];
-        const video = document.getElementById('camera');
-        const canvas = document.getElementById('canvas');
-        const outputDiv = document.getElementById('outputAttributes');
-
-        // Start the Camera
-        async function startCamera() {
-            try {
-                if (stream) stream.getTracks().forEach(track => track.stop());
-                stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: currentFacingMode, width: 1280, height: 720 }
-                });
-                video.srcObject = stream;
-            } catch (error) {
-                alert("Camera access denied or unavailable.");
-                console.error(error);
-            }
-        }
-
-        // Flip Camera
-        document.getElementById('flipButton').addEventListener('click', () => {
-            currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
-            startCamera();
-        });
-
-        // Capture Image
-        document.getElementById('captureButton').addEventListener('click', () => {
-            const context = canvas.getContext('2d');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-            canvas.toBlob(blob => {
-                const img = new Image();
-                img.src = URL.createObjectURL(blob);
-                img.onload = () => processImage(img);
-            }, 'image/png');
-        });
-
-        // Process Image Using Tesseract.js
-        async function processImage(img) {
-            outputDiv.innerHTML = "<p>Processing...</p>";
-            const result = await Tesseract.recognize(img, 'eng', { logger: m => console.log(m) });
-            console.log("Extracted Text:", result.data.text);
-            processKeyValuePairs(result.data.text);
-        }
-
-        // Extract Key-Value Pairs and Index
-        function processKeyValuePairs(text) {
-            extractedData = {};
-            const lines = text.split("\n");
-
-            lines.forEach((line, index) => {
-                const match = line.match(/^(.*?):\s*(.*)$/);
-                if (match) {
-                    extractedData[match[1].trim()] = match[2].trim();
-                } else {
-                    extractedData[`Line ${index + 1}`] = line.trim();
-                }
-            });
-
-            allData.push(extractedData);
-            displayData();
-        }
-
-        // Display Extracted Data in a Structured Format
-        function displayData() {
-            outputDiv.innerHTML = "";
-            Object.entries(extractedData).forEach(([key, value]) => {
-                outputDiv.innerHTML += `<p><strong>${key}:</strong> ${value}</p>`;
-            });
-        }
-
-        // Export Data to Excel
-        document.getElementById('exportButton').addEventListener('click', () => {
-            const workbook = XLSX.utils.book_new();
-            const headers = Object.keys(allData[0] || {});
-            const rows = allData.map(row => headers.map(key => row[key] || "-"));
-
-            const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Extracted Data");
-            XLSX.writeFile(workbook, "Dynamic_ICR_Data.xlsx");
-        });
-
-        // Start Camera on Load
-        startCamera();
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
