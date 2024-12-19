@@ -67,8 +67,6 @@ async function processImage(img) {
 
         if (result && result.data.text) {
             console.log("OCR Result:", result.data.text);
-            const productName = extractProductName(result.data.words);
-            outputDiv.innerHTML = `<p><strong>Product Name:</strong> ${productName || "Not Found"}</p>`;
             processTextToAttributes(result.data.text);
         } else {
             outputDiv.innerHTML = "<p>No text detected. Please try again.</p>";
@@ -77,24 +75,6 @@ async function processImage(img) {
         console.error("Tesseract Error:", error);
         outputDiv.innerHTML = "<p>Error processing image. Please try again.</p>";
     }
-}
-
-// Function to extract product name
-function extractProductName(words) {
-    // Thresholds for "big letters"
-    const heightThreshold = Math.max(...words.map(w => w.bbox.y1 - w.bbox.y0)) * 0.8;
-
-    // Filter for big letters
-    const bigWords = words.filter(word => (word.bbox.y1 - word.bbox.y0) > heightThreshold);
-
-    // Combine big words to form potential product name
-    const productNameCandidates = bigWords.map(word => word.text).join(" ");
-
-    // Check for company-related keywords
-    const companyKeywords = ["Company", "Ltd", "Pvt", "Inc"];
-    const hasCompanyName = words.some(word => companyKeywords.includes(word.text));
-
-    return hasCompanyName ? productNameCandidates : "No product name found";
 }
 
 // Map Extracted Text to Keywords
@@ -114,6 +94,13 @@ function processTextToAttributes(text) {
         }
         if (!found) extractedData[keyword] = "-";
     });
+
+    // Set Product Name: Use 'Product name' if available, else fallback to 'Brand'
+    if (!extractedData["Product name"] || extractedData["Product name"] === "-") {
+        if (extractedData["Brand"] && extractedData["Brand"] !== "-") {
+            extractedData["Product name"] = extractedData["Brand"];
+        }
+    }
 
     lines.forEach(line => {
         let isMatched = keywords.some(keyword => line.includes(keyword));
