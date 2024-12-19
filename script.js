@@ -95,11 +95,13 @@ function processTextToAttributes(text) {
         if (!found) extractedData[keyword] = "-";
     });
 
-    // If Product Name is missing, assign Brand value to Product Name
+    // If Product Name is missing, assign Brand value or first line as Product Name
     if (!extractedData["Product name"] || extractedData["Product name"] === "-") {
         const brandLine = lines.find(line => line.includes("Brand"));
         if (brandLine) {
             extractedData["Product name"] = brandLine.split(":"[1]?.trim() || "-");
+        } else if (lines.length > 0) {
+            extractedData["Product name"] = lines[0].trim();
         }
     }
 
