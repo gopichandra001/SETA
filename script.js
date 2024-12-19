@@ -8,7 +8,8 @@ const keywords = [
     "Total amount", "Payment status", "Payment method", "Invoice date", "Warranty", 
     "Brand", "Motor horsepower", "Power", "Motor phase", "Engine type", "Tank capacity",
     "Head", "Usage/Application", "Weight", "Volts", "Hertz", "Frame", "Mounting", "Toll free number",
-    "Pipesize", "Manufacturer", "Office", "Size", "Ratio", "SR/Serial number"
+    "Pipesize", "Manufacturer", "Office", "Size", "Ratio", "SR number", "volts", "weight", "RPM", 
+    "frame", 
 ];
 
 let currentFacingMode = "environment";
@@ -105,7 +106,7 @@ function processTextToAttributes(text) {
         }
     }
 
-    // Add unmatched lines to Other Specifications
+    // Add unmatched lines to Other Specifications in line-by-line format
     lines.forEach(line => {
         let isMatched = keywords.some(keyword => line.toLowerCase().includes(keyword.toLowerCase()));
         if (!isMatched) {
@@ -114,7 +115,7 @@ function processTextToAttributes(text) {
     });
 
     if (unmatchedText.length > 0) {
-        extractedData["Other Specifications"] = unmatchedText.join("; ");
+        extractedData["Other Specifications"] = unmatchedText.join("\n");
     }
 
     allData.push(extractedData);
