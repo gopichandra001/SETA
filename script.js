@@ -79,15 +79,15 @@ async function processImage(img) {
 
 // Map Extracted Text to Keywords
 function processTextToAttributes(text) {
-    const lines = text.split("\n");
+    const lines = text.split("\n").map(line => line.trim()).filter(line => line !== "");
     extractedData = {};
     let unmatchedText = [];
 
     keywords.forEach(keyword => {
         let found = false;
         for (let line of lines) {
-            if (line.includes(keyword)) {
-                extractedData[keyword] = line.split(":"[1]?.trim() || "-");
+            if (line.toLowerCase().includes(keyword.toLowerCase())) {
+                extractedData[keyword] = line.split(":"[1]?.trim() || line;
                 found = true;
                 break;
             }
@@ -97,18 +97,19 @@ function processTextToAttributes(text) {
 
     // If Product Name is missing, assign Brand value or first line as Product Name
     if (!extractedData["Product name"] || extractedData["Product name"] === "-") {
-        const brandLine = lines.find(line => line.includes("Brand"));
+        const brandLine = lines.find(line => line.toLowerCase().includes("brand"));
         if (brandLine) {
-            extractedData["Product name"] = brandLine.split(":"[1]?.trim() || "-");
+            extractedData["Product name"] = brandLine.split(":"[1]?.trim() || brandLine;
         } else if (lines.length > 0) {
             extractedData["Product name"] = lines[0].trim();
         }
     }
 
+    // Add unmatched lines to Other Specifications
     lines.forEach(line => {
-        let isMatched = keywords.some(keyword => line.includes(keyword));
+        let isMatched = keywords.some(keyword => line.toLowerCase().includes(keyword.toLowerCase()));
         if (!isMatched) {
-            unmatchedText.push(line.trim());
+            unmatchedText.push(line);
         }
     });
 
