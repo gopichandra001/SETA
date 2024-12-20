@@ -38,6 +38,13 @@ def perform_ocr(reader, image_path):
 # Function to Extract Structured Data
 def extract_structured_data(text):
     structured_data = {}
+    lines = text.split("\n")
+
+    # Assign the first line as the Product Name
+    if lines:
+        structured_data["Product Name"] = lines[0].strip()
+
+    # Patterns for extracting data
     patterns = {
         "Company Name": r"(?i)(Company Name|Company):\s*(.*)",
         "Address": r"(?i)(Address):\s*(.*)",
@@ -48,12 +55,13 @@ def extract_structured_data(text):
         "Invoice Date": r"(?i)(Invoice\s*Date|Date):\s*(.*)"
     }
 
+    # Match patterns in text
     for field, pattern in patterns.items():
         match = re.search(pattern, text)
         if match:
-            structured_data[field] = match.group(2 if "Company" in field or "Address" in field else 1).strip()
-        else:
-            structured_data[field] = "-"
+            value = match.group(2).strip() if len(match.groups()) > 1 else match.group(1).strip()
+            structured_data[field] = value
+
     return structured_data
 
 # Main Execution
@@ -80,8 +88,11 @@ def main():
 
     # Print Structured Data
     print("\nStructured Data:")
-    for key, value in structured_data.items():
-        print(f"{key}: {value}")
+    if structured_data:
+        for key, value in structured_data.items():
+            print(f"{key}: {value}")
+    else:
+        print("No valid data found in the extracted text.")
 
 # Run the Script
 if __name__ == "__main__":
