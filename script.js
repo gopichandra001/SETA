@@ -7,53 +7,53 @@ let currentStream = null;
 let useFrontCamera = true;
 
 function startCamera() {
+    // Stop any existing video streams
     if (currentStream) {
         currentStream.getTracks().forEach(track => track.stop());
     }
 
+    // Define constraints for mobile and desktop compatibility
     let constraints = {
         video: {
-            facingMode: useFrontCamera ? 'user' : 'environment',
-            width: { ideal: 1920 },
-            height: { ideal: 1080 }
+            facingMode: useFrontCamera ? 'user' : { ideal: 'environment' },
+            width: { ideal: 1280 }, // Adjust for high resolution
+            height: { ideal: 720 }
         }
     };
 
+    // Access camera
     navigator.mediaDevices.getUserMedia(constraints)
         .then(stream => {
             currentStream = stream;
             video.srcObject = stream;
+            video.play();
         })
         .catch(error => {
             console.error('Error accessing the camera:', error);
+            alert('Camera access failed. Please ensure permissions are granted.');
         });
 }
 
+// Flip camera functionality
 flip.addEventListener('click', () => {
     useFrontCamera = !useFrontCamera;
     startCamera();
 });
 
+// Capture image functionality
 capture.addEventListener('click', () => {
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // Convert the image to a higher resolution by scaling up
-    let scaledCanvas = document.createElement('canvas');
-    let scaledContext = scaledCanvas.getContext('2d');
-    let scalingFactor = 2; // Increase resolution by scaling factor
-    scaledCanvas.width = canvas.width * scalingFactor;
-    scaledCanvas.height = canvas.height * scalingFactor;
-    scaledContext.drawImage(canvas, 0, 0, scaledCanvas.width, scaledCanvas.height);
+    // Get the image as a data URL
+    const imageData = canvas.toDataURL('image/png');
 
-    const imageData = scaledCanvas.toDataURL('image/png');
-    console.log(imageData); // Process the enhanced image further
-
-    // Send the image data for further processing
+    // Send image data for processing
     uploadImage(imageData);
 });
 
+// Function to upload the image to the server
 function uploadImage(imageData) {
     fetch('/upload', {
         method: 'POST',
@@ -67,4 +67,5 @@ function uploadImage(imageData) {
         .catch(error => console.error('Error uploading the image:', error));
 }
 
+// Start the camera on page load
 window.onload = startCamera;
