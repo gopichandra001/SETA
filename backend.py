@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
-import subprocess
-import os
+from calamari_ocr.ocr import Predictor
+from calamari_ocr.ocr.text_processing import TextProcessorParams
 
 
 def scan_image(image_path):
@@ -47,30 +47,21 @@ def process_image(image):
     return despeckled
 
 
-def perform_ocr_with_ocrmypdf(image_path, output_pdf="output.pdf"):
+def perform_ocr_with_calamari(image_path):
     """
-    Performs OCR using OCRmyPDF.
+    Performs OCR using Calamari OCR.
     """
-    print("Step 3: Performing OCR with OCRmyPDF...")
-
-    # Temporary output path for the OCR-ed PDF
-    ocr_command = [
-        "ocrmypdf",
-        "--force-ocr",
-        image_path,
-        output_pdf
-    ]
+    print("Step 3: Performing OCR with Calamari OCR...")
     
-    # Run the OCR process
-    try:
-        subprocess.run(ocr_command, check=True)
-        print(f"OCR completed successfully. Output saved to {output_pdf}")
-        
-        # Read the text from the output PDF using pdftotext (optional)
-        extracted_text = subprocess.check_output(["pdftotext", output_pdf, "-"]).decode('utf-8')
-        return extracted_text.strip()
-    except subprocess.CalledProcessError as e:
-        raise Exception(f"OCRmyPDF failed with error: {e}")
+    # Initialize the Calamari Predictor
+    predictor = Predictor.from_path("models/0")
+    
+    # Perform OCR
+    result = predictor.predict([image_path])
+    extracted_text = "\n".join([line for line in result[0].text])
+    
+    print("OCR completed successfully with Calamari OCR.")
+    return extracted_text
 
 
 def post_process_text(extracted_text):
@@ -98,8 +89,8 @@ def main(image_path):
         processed_image_path = "processed_image.jpg"
         cv2.imwrite(processed_image_path, processed_image)
 
-        # Step 3: Perform OCR with OCRmyPDF
-        extracted_text = perform_ocr_with_ocrmypdf(processed_image_path)
+        # Step 3: Perform OCR with Calamari
+        extracted_text = perform_ocr_with_calamari(processed_image_path)
 
         # Step 4: Post-process the text
         final_text = post_process_text(extracted_text)
@@ -108,9 +99,6 @@ def main(image_path):
         print("\n--- Extracted Text ---")
         print(final_text)
         print("\nProcess completed successfully.")
-
-        # Clean up temporary files
-        os.remove(processed_image_path)
 
     except Exception as e:
         print(f"An error occurred: {e}")
