@@ -6,32 +6,29 @@ let context = canvas.getContext('2d');
 let currentStream = null;
 let useFrontCamera = true;
 
-// Start the camera
 async function startCamera() {
     try {
-        // Stop any existing stream
+        // Stop existing streams
         if (currentStream) {
             currentStream.getTracks().forEach(track => track.stop());
         }
 
-        // Define camera constraints
+        // Define constraints for mobile and desktop
         const constraints = {
             video: {
                 facingMode: useFrontCamera ? 'user' : 'environment',
-                width: { ideal: 1280 }, // Adjust resolution
+                width: { ideal: 1280 },
                 height: { ideal: 720 }
-            },
-            audio: false // Disable audio
+            }
         };
 
         // Request user media
         currentStream = await navigator.mediaDevices.getUserMedia(constraints);
         video.srcObject = currentStream;
         video.play();
-        console.log("Camera started successfully.");
     } catch (error) {
-        console.error("Error starting the camera:", error);
-        alert("Unable to access the camera. Please check permissions and ensure your device has a camera.");
+        console.error('Error starting the camera:', error);
+        alert('Unable to access the camera. Please check permissions and ensure your device has a camera.');
     }
 }
 
@@ -50,16 +47,13 @@ capture.addEventListener('click', () => {
 
         // Convert canvas to image data
         const imageData = canvas.toDataURL('image/png');
-        console.log("Captured Image:", imageData);
-
-        // Upload the captured image for processing
         uploadImage(imageData);
     } else {
         alert("Unable to capture image. Please try again.");
     }
 });
 
-// Upload captured image
+// Upload captured image for OCR processing
 async function uploadImage(imageData) {
     try {
         const response = await fetch('/upload', {
@@ -68,9 +62,6 @@ async function uploadImage(imageData) {
             body: JSON.stringify({ image: imageData })
         });
         const result = await response.json();
-        console.log("OCR Result:", result);
-
-        // Display the extracted text
         document.getElementById('extracted-text').value = result.extracted_text || 'No text detected.';
     } catch (error) {
         console.error("Error uploading the image:", error);
@@ -78,5 +69,5 @@ async function uploadImage(imageData) {
     }
 }
 
-// Initialize the camera on page load
+// Initialize camera on page load
 window.onload = startCamera;
