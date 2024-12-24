@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-import easyocr
+from paddleocr import PaddleOCR
 
 
 def scan_image(image_path):
@@ -46,17 +46,19 @@ def process_image(image):
     return despeckled
 
 
-def perform_ocr_with_easyocr(image_path, language='en'):
+def perform_ocr_with_paddleocr(image_path):
     """
-    Performs OCR using EasyOCR.
+    Performs OCR using PaddleOCR.
     """
-    print("Step 3: Performing OCR with EasyOCR...")
+    print("Step 3: Performing OCR with PaddleOCR...")
     
-    reader = easyocr.Reader([language])
-    result = reader.readtext(image_path)
-    
-    extracted_text = "\n".join([text[1] for text in result])
-    print("OCR completed successfully with EasyOCR.")
+    # Initialize PaddleOCR
+    ocr = PaddleOCR(use_angle_cls=True, lang='en')  # You can change lang to other supported languages
+
+    # Perform OCR
+    result = ocr.ocr(image_path, cls=True)
+    extracted_text = "\n".join([line[1][0] for line in result[0]])
+    print("OCR completed successfully with PaddleOCR.")
     return extracted_text
 
 
@@ -81,8 +83,8 @@ def main(image_path):
         # Step 2: Process the image
         processed_image = process_image(scanned_image)
 
-        # Step 3: Perform OCR with EasyOCR
-        extracted_text = perform_ocr_with_easyocr(image_path)
+        # Step 3: Perform OCR with PaddleOCR
+        extracted_text = perform_ocr_with_paddleocr(image_path)
 
         # Step 4: Post-process the text
         final_text = post_process_text(extracted_text)
