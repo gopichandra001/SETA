@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
-from paddleocr import PaddleOCR
+import subprocess
+import os
 
 
 def scan_image(image_path):
@@ -46,20 +47,30 @@ def process_image(image):
     return despeckled
 
 
-def perform_ocr_with_paddleocr(image_path):
+def perform_ocr_with_ocrmypdf(image_path, output_pdf="output.pdf"):
     """
-    Performs OCR using PaddleOCR.
+    Performs OCR using OCRmyPDF.
     """
-    print("Step 3: Performing OCR with PaddleOCR...")
-    
-    # Initialize PaddleOCR
-    ocr = PaddleOCR(use_angle_cls=True, lang='en')  # You can change lang to other supported languages
+    print("Step 3: Performing OCR with OCRmyPDF...")
 
-    # Perform OCR
-    result = ocr.ocr(image_path, cls=True)
-    extracted_text = "\n".join([line[1][0] for line in result[0]])
-    print("OCR completed successfully with PaddleOCR.")
-    return extracted_text
+    # Temporary output path for the OCR-ed PDF
+    ocr_command = [
+        "ocrmypdf",
+        "--force-ocr",
+        image_path,
+        output_pdf
+    ]
+    
+    # Run the OCR process
+    try:
+        subprocess.run(ocr_command, check=True)
+        print(f"OCR completed successfully. Output saved to {output_pdf}")
+        
+        # Read the text from the output PDF using pdftotext (optional)
+        extracted_text = subprocess.check_output(["pdftotext", output_pdf, "-"]).decode('utf-8')
+        return extracted_text.strip()
+    except subprocess.CalledProcessError as e:
+        raise Exception(f"OCRmyPDF failed with error: {e}")
 
 
 def post_process_text(extracted_text):
@@ -83,8 +94,12 @@ def main(image_path):
         # Step 2: Process the image
         processed_image = process_image(scanned_image)
 
-        # Step 3: Perform OCR with PaddleOCR
-        extracted_text = perform_ocr_with_paddleocr(image_path)
+        # Save the processed image temporarily
+        processed_image_path = "processed_image.jpg"
+        cv2.imwrite(processed_image_path, processed_image)
+
+        # Step 3: Perform OCR with OCRmyPDF
+        extracted_text = perform_ocr_with_ocrmypdf(processed_image_path)
 
         # Step 4: Post-process the text
         final_text = post_process_text(extracted_text)
@@ -93,6 +108,9 @@ def main(image_path):
         print("\n--- Extracted Text ---")
         print(final_text)
         print("\nProcess completed successfully.")
+
+        # Clean up temporary files
+        os.remove(processed_image_path)
 
     except Exception as e:
         print(f"An error occurred: {e}")
