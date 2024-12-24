@@ -1,7 +1,8 @@
 import cv2
 import numpy as np
-from calamari_ocr.ocr import Predictor
-from calamari_ocr.ocr.text_processing import TextProcessorParams
+from kraken import binarization
+from kraken.lib.models import load_any
+from kraken.lib import vgsl
 
 
 def scan_image(image_path):
@@ -24,44 +25,34 @@ def process_image(image):
     """
     print("Step 2: Applying image processing techniques...")
 
-    # Binarization (convert to black and white)
-    _, binarized = cv2.threshold(image, 127, 255, cv2.THRESH_BINARY)
+    # Binarization using Kraken's binarization method
+    binarized_image = binarization.nlbin(image)
+    print("Binarization applied.")
 
-    # Deskewing (straightening skewed text)
-    coords = np.column_stack(np.where(binarized > 0))
-    angle = cv2.minAreaRect(coords)[-1]
-    if angle < -45:
-        angle = -(90 + angle)
-    else:
-        angle = -angle
-    (h, w) = binarized.shape[:2]
-    center = (w // 2, h // 2)
-    rotation_matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
-    deskewed = cv2.warpAffine(binarized, rotation_matrix, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
-    print("Deskewing applied.")
+    # Resize for better OCR performance
+    resized_image = cv2.resize(binarized_image, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
+    print("Resizing applied.")
 
-    # Despeckling (removing noise)
-    despeckled = cv2.medianBlur(deskewed, 3)
-    print("Despeckling applied.")
-
-    return despeckled
+    return resized_image
 
 
-def perform_ocr_with_calamari(image_path):
+def perform_ocr_with_kraken(image_path, model_path="en-default"):
     """
-    Performs OCR using Calamari OCR.
+    Performs OCR using Kraken OCR.
     """
-    print("Step 3: Performing OCR with Calamari OCR...")
-    
-    # Initialize the Calamari Predictor
-    predictor = Predictor.from_path("models/0")
-    
+    print("Step 3: Performing OCR with Kraken OCR...")
+
+    # Load the pre-trained Kraken model
+    model = load_any(model_path)
+
     # Perform OCR
-    result = predictor.predict([image_path])
-    extracted_text = "\n".join([line for line in result[0].text])
-    
-    print("OCR completed successfully with Calamari OCR.")
-    return extracted_text
+    try:
+        result = vgsl.recognize([image_path], model=model)
+        extracted_text = "\n".join([line['text'] for line in result])
+        print("OCR completed successfully with Kraken.")
+        return extracted_text
+    except Exception as e:
+        raise Exception(f"Kraken OCR failed: {e}")
 
 
 def post_process_text(extracted_text):
@@ -89,8 +80,8 @@ def main(image_path):
         processed_image_path = "processed_image.jpg"
         cv2.imwrite(processed_image_path, processed_image)
 
-        # Step 3: Perform OCR with Calamari
-        extracted_text = perform_ocr_with_calamari(processed_image_path)
+        # Step 3: Perform OCR with Kraken
+        extracted_text = perform_ocr_with_kraken(processed_image_path)
 
         # Step 4: Post-process the text
         final_text = post_process_text(extracted_text)
