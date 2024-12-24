@@ -7,61 +7,60 @@ let currentStream = null;
 let useFrontCamera = true;
 
 async function startCamera() {
-    // Stop any existing streams
-    if (currentStream) {
-        currentStream.getTracks().forEach(track => track.stop());
-    }
-
     try {
-        // Define camera constraints
+        // Stop any existing streams
+        if (currentStream) {
+            currentStream.getTracks().forEach(track => track.stop());
+        }
+
+        // Define constraints for both mobile and webcam
         let constraints = {
             video: {
                 facingMode: useFrontCamera ? 'user' : 'environment',
-                width: { ideal: 1280 }, // Higher resolution for better image quality
+                width: { ideal: 1280 }, // Adjust width for higher resolution
                 height: { ideal: 720 }
             }
         };
 
-        // Request camera access
+        // Request access to the camera
         currentStream = await navigator.mediaDevices.getUserMedia(constraints);
         video.srcObject = currentStream;
         video.play();
-
     } catch (error) {
         console.error('Error accessing the camera:', error);
-        alert('Camera access failed. Please ensure permissions are granted and your device supports camera functionality.');
+        alert('Unable to access the camera. Please ensure camera permissions are granted and try again.');
     }
 }
 
-// Flip between front and back cameras
+// Flip camera functionality
 flip.addEventListener('click', () => {
     useFrontCamera = !useFrontCamera;
     startCamera();
 });
 
-// Capture and process the image
+// Capture the current video frame
 capture.addEventListener('click', () => {
     if (video.videoWidth && video.videoHeight) {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
 
-        // Draw the video frame to canvas
+        // Draw the video frame to the canvas
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        // Convert the canvas to a base64 image
+        // Convert the canvas image to a data URL
         const imageData = canvas.toDataURL('image/png');
 
-        // Display the image in the console for debugging
+        // Display the captured image in the console for debugging
         console.log("Captured Image:", imageData);
 
-        // Upload the image for OCR processing
+        // Upload the image for processing
         uploadImage(imageData);
     } else {
         alert("Unable to capture the image. Please try again.");
     }
 });
 
-// Upload the captured image to the server for processing
+// Upload the image to the server for OCR processing
 function uploadImage(imageData) {
     fetch('/upload', {
         method: 'POST',
