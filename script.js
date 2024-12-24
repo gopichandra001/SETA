@@ -1,73 +1,70 @@
-let video = document.getElementById('camera');
-let flip = document.getElementById('flip-camera');
-let capture = document.getElementById('capture');
-let canvas = document.getElementById('canvas');
-let context = canvas.getContext('2d');
-let currentStream = null;
-let useFrontCamera = true;
-
+// Initialize the camera
 async function startCamera() {
+    const videoElement = document.getElementById("camera");
+
     try {
-        // Stop existing streams
-        if (currentStream) {
-            currentStream.getTracks().forEach(track => track.stop());
-        }
-
-        // Define constraints for mobile and desktop
-        const constraints = {
-            video: {
-                facingMode: useFrontCamera ? 'user' : 'environment',
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
-            }
-        };
-
-        // Request user media
-        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-        video.srcObject = currentStream;
-        video.play();
-    } catch (error) {
-        console.error('Error starting the camera:', error);
-        alert('Unable to access the camera. Please check permissions and ensure your device has a camera.');
-    }
-}
-
-// Flip camera
-flip.addEventListener('click', () => {
-    useFrontCamera = !useFrontCamera;
-    startCamera();
-});
-
-// Capture image
-capture.addEventListener('click', () => {
-    if (video.videoWidth && video.videoHeight) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-        // Convert canvas to image data
-        const imageData = canvas.toDataURL('image/png');
-        uploadImage(imageData);
-    } else {
-        alert("Unable to capture image. Please try again.");
-    }
-});
-
-// Upload captured image for OCR processing
-async function uploadImage(imageData) {
-    try {
-        const response = await fetch('/upload', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image: imageData })
+        // Request camera access
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "environment" },
+            audio: false, // Audio not required
         });
-        const result = await response.json();
-        document.getElementById('extracted-text').value = result.extracted_text || 'No text detected.';
+
+        // Set the video element source to the camera stream
+        videoElement.srcObject = stream;
+        videoElement.play();
+        console.log("Camera started successfully.");
     } catch (error) {
-        console.error("Error uploading the image:", error);
-        alert("Error processing the image. Please try again.");
+        console.error("Camera Error:", error);
+
+        // Handle common errors
+        if (error.name === "NotAllowedError") {
+            alert("Camera access is denied. Please allow camera permissions in your browser.");
+        } else if (error.name === "NotFoundError") {
+            alert("No camera found. Please connect a camera to your device.");
+        } else {
+            alert("An unexpected error occurred while accessing the camera: " + error.message);
+        }
     }
 }
 
-// Initialize camera on page load
-window.onload = startCamera;
+// Capture an image and extract text
+document.getElementById("captureButton").addEventListener("click", () => {
+    const video = document.getElementById("camera");
+    const canvas = document.getElementById("canvas");
+    const context = canvas.getContext("2d");
+
+    // Set canvas dimensions to match the video feed
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    // Draw the video frame on the canvas
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const img = new Image();
+    img.src = canvas.toDataURL();
+    img.onload = () => extractText(img);
+});
+
+// Extract text using Tesseract.js
+async function extractText(image) {
+    try {
+        document.getElementById("loader").style.display = "block"; // Show loading indicator
+
+        const result = await Tesseract.recognize(image, "eng");
+        displayExtractedText(result.data.text); // Display the extracted text
+    } catch (error) {
+        console.error("Text Extraction Error:", error);
+        alert("Failed to extract text. Please try again.");
+    } finally {
+        document.getElementById("loader").style.display = "none"; // Hide loading indicator
+    }
+}
+
+// Display extracted text
+function displayExtractedText(text) {
+    const outputDiv = document.getElementById("outputText");
+    outputDiv.textContent = text || "No text found.";
+}
+
+// Automatically start the camera when the page loads
+document.addEventListener("DOMContentLoaded", startCamera);
