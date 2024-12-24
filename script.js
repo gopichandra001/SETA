@@ -3,13 +3,13 @@ async function startCamera() {
     const videoElement = document.getElementById("camera");
 
     try {
-        // Request camera access
+        // Request access to the camera
         const stream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: "environment" },
             audio: false, // Audio not required
         });
 
-        // Set the video element source to the camera stream
+        // Set the video element's source to the camera stream
         videoElement.srcObject = stream;
         videoElement.play();
         console.log("Camera started successfully.");
@@ -27,7 +27,7 @@ async function startCamera() {
     }
 }
 
-// Capture an image and extract text
+// Capture an image and process it
 document.getElementById("captureButton").addEventListener("click", () => {
     const video = document.getElementById("camera");
     const canvas = document.getElementById("canvas");
