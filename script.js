@@ -6,54 +6,62 @@ let context = canvas.getContext('2d');
 let currentStream = null;
 let useFrontCamera = true;
 
-function startCamera() {
-    // Stop any existing video streams
+async function startCamera() {
+    // Stop any existing streams
     if (currentStream) {
         currentStream.getTracks().forEach(track => track.stop());
     }
 
-    // Define constraints for mobile and desktop compatibility
-    let constraints = {
-        video: {
-            facingMode: useFrontCamera ? 'user' : { ideal: 'environment' },
-            width: { ideal: 1280 }, // Adjust for high resolution
-            height: { ideal: 720 }
-        }
-    };
+    try {
+        // Define camera constraints
+        let constraints = {
+            video: {
+                facingMode: useFrontCamera ? 'user' : 'environment',
+                width: { ideal: 1280 }, // Higher resolution for better image quality
+                height: { ideal: 720 }
+            }
+        };
 
-    // Access camera
-    navigator.mediaDevices.getUserMedia(constraints)
-        .then(stream => {
-            currentStream = stream;
-            video.srcObject = stream;
-            video.play();
-        })
-        .catch(error => {
-            console.error('Error accessing the camera:', error);
-            alert('Camera access failed. Please ensure permissions are granted.');
-        });
+        // Request camera access
+        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = currentStream;
+        video.play();
+
+    } catch (error) {
+        console.error('Error accessing the camera:', error);
+        alert('Camera access failed. Please ensure permissions are granted and your device supports camera functionality.');
+    }
 }
 
-// Flip camera functionality
+// Flip between front and back cameras
 flip.addEventListener('click', () => {
     useFrontCamera = !useFrontCamera;
     startCamera();
 });
 
-// Capture image functionality
+// Capture and process the image
 capture.addEventListener('click', () => {
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    if (video.videoWidth && video.videoHeight) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
 
-    // Get the image as a data URL
-    const imageData = canvas.toDataURL('image/png');
+        // Draw the video frame to canvas
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // Send image data for processing
-    uploadImage(imageData);
+        // Convert the canvas to a base64 image
+        const imageData = canvas.toDataURL('image/png');
+
+        // Display the image in the console for debugging
+        console.log("Captured Image:", imageData);
+
+        // Upload the image for OCR processing
+        uploadImage(imageData);
+    } else {
+        alert("Unable to capture the image. Please try again.");
+    }
 });
 
-// Function to upload the image to the server
+// Upload the captured image to the server for processing
 function uploadImage(imageData) {
     fetch('/upload', {
         method: 'POST',
@@ -62,10 +70,13 @@ function uploadImage(imageData) {
     })
         .then(response => response.json())
         .then(data => {
-            document.getElementById('extracted-text').value = data.extracted_text;
+            document.getElementById('extracted-text').value = data.extracted_text || 'No text detected.';
         })
-        .catch(error => console.error('Error uploading the image:', error));
+        .catch(error => {
+            console.error('Error uploading the image:', error);
+            alert('Error processing the image. Please try again.');
+        });
 }
 
-// Start the camera on page load
+// Initialize the camera on page load
 window.onload = startCamera;
