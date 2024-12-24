@@ -1,37 +1,29 @@
-import cv2
+from flask import Flask, request, jsonify
 from PIL import Image
-import numpy as np
 import pytesseract
+import base64
+import io
 
-def enhance_image(image_path):
-    # Load the image
-    image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+app = Flask(__name__)
 
-    # Apply binarization
-    _, binary_image = cv2.threshold(image, 127, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+@app.route('/upload', methods=['POST'])
+def upload_image():
+    try:
+        # Get image from request
+        data = request.json.get("image")
+        if not data:
+            return jsonify({"error": "No image data provided"}), 400
 
-    # Deskew the image
-    coords = np.column_stack(np.where(binary_image > 0))
-    angle = cv2.minAreaRect(coords)[-1]
-    if angle < -45:
-        angle = -(90 + angle)
-    else:
-        angle = -angle
-    (h, w) = binary_image.shape[:2]
-    center = (w // 2, h // 2)
-    rotation_matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
-    deskewed_image = cv2.warpAffine(binary_image, rotation_matrix, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+        # Decode base64 image
+        image_data = base64.b64decode(data.split(",")[1])
+        image = Image.open(io.BytesIO(image_data))
 
-    # Remove noise and speckles
-    cleaned_image = cv2.fastNlMeansDenoising(deskewed_image, None, 30, 7, 21)
+        # Perform OCR
+        text = pytesseract.image_to_string(image)
+        return jsonify({"extracted_text": text}), 200
 
-    # Save the enhanced image temporarily
-    enhanced_path = "enhanced_image.png"
-    cv2.imwrite(enhanced_path, cleaned_image)
-    return enhanced_path
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-def extract_text(image_path):
-    enhanced_image_path = enhance_image(image_path)
-    img = Image.open(enhanced_image_path)
-    text = pytesseract.image_to_string(img)
-    return text
+if __name__ == '__main__':
+    app.run(debug=True)
