@@ -1,8 +1,6 @@
 import cv2
 import numpy as np
-from kraken import binarization
-from kraken.lib.models import load_any
-from kraken.lib import vgsl
+from pix2text import Pix2Text
 
 
 def scan_image(image_path):
@@ -25,34 +23,48 @@ def process_image(image):
     """
     print("Step 2: Applying image processing techniques...")
 
-    # Binarization using Kraken's binarization method
-    binarized_image = binarization.nlbin(image)
-    print("Binarization applied.")
+    # Resize for better resolution
+    resized = cv2.resize(image, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
 
-    # Resize for better OCR performance
-    resized_image = cv2.resize(binarized_image, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
-    print("Resizing applied.")
+    # Binarization (convert to black and white)
+    _, binarized = cv2.threshold(resized, 127, 255, cv2.THRESH_BINARY)
 
-    return resized_image
+    # Deskewing (straightening skewed text)
+    coords = np.column_stack(np.where(binarized > 0))
+    angle = cv2.minAreaRect(coords)[-1]
+    if angle < -45:
+        angle = -(90 + angle)
+    else:
+        angle = -angle
+    (h, w) = binarized.shape[:2]
+    center = (w // 2, h // 2)
+    rotation_matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
+    deskewed = cv2.warpAffine(binarized, rotation_matrix, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+    print("Deskewing applied.")
+
+    # Despeckling (removing noise)
+    despeckled = cv2.medianBlur(deskewed, 3)
+    print("Despeckling applied.")
+
+    return despeckled
 
 
-def perform_ocr_with_kraken(image_path, model_path="en-default"):
+def perform_ocr_with_pix2text(image_path):
     """
-    Performs OCR using Kraken OCR.
+    Performs OCR using Pix2Text.
     """
-    print("Step 3: Performing OCR with Kraken OCR...")
-
-    # Load the pre-trained Kraken model
-    model = load_any(model_path)
-
+    print("Step 3: Performing OCR with Pix2Text...")
+    
+    # Initialize Pix2Text OCR engine
+    p2t = Pix2Text()
+    
     # Perform OCR
     try:
-        result = vgsl.recognize([image_path], model=model)
-        extracted_text = "\n".join([line['text'] for line in result])
-        print("OCR completed successfully with Kraken.")
+        extracted_text = p2t(image_path)
+        print("OCR completed successfully with Pix2Text.")
         return extracted_text
     except Exception as e:
-        raise Exception(f"Kraken OCR failed: {e}")
+        raise Exception(f"Pix2Text OCR failed: {e}")
 
 
 def post_process_text(extracted_text):
@@ -80,8 +92,8 @@ def main(image_path):
         processed_image_path = "processed_image.jpg"
         cv2.imwrite(processed_image_path, processed_image)
 
-        # Step 3: Perform OCR with Kraken
-        extracted_text = perform_ocr_with_kraken(processed_image_path)
+        # Step 3: Perform OCR with Pix2Text
+        extracted_text = perform_ocr_with_pix2text(processed_image_path)
 
         # Step 4: Post-process the text
         final_text = post_process_text(extracted_text)
