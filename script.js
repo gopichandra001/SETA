@@ -6,9 +6,10 @@ let context = canvas.getContext('2d');
 let currentStream = null;
 let useFrontCamera = true;
 
+// Start the camera
 async function startCamera() {
     try {
-        // Stop existing streams
+        // Stop any existing stream
         if (currentStream) {
             currentStream.getTracks().forEach(track => track.stop());
         }
@@ -16,30 +17,25 @@ async function startCamera() {
         // Define camera constraints
         const constraints = {
             video: {
-                facingMode: useFrontCamera ? 'user' : { exact: 'environment' },
-                width: { ideal: 1280 },
+                facingMode: useFrontCamera ? 'user' : 'environment',
+                width: { ideal: 1280 }, // Adjust resolution
                 height: { ideal: 720 }
-            }
+            },
+            audio: false // Disable audio
         };
 
-        // Request camera access
+        // Request user media
         currentStream = await navigator.mediaDevices.getUserMedia(constraints);
         video.srcObject = currentStream;
         video.play();
         console.log("Camera started successfully.");
     } catch (error) {
-        console.error("Error starting camera:", error);
-        if (error.name === "NotAllowedError") {
-            alert("Camera access denied. Please allow camera access.");
-        } else if (error.name === "NotFoundError") {
-            alert("No camera found on this device.");
-        } else {
-            alert("Unable to access the camera. Check your device settings.");
-        }
+        console.error("Error starting the camera:", error);
+        alert("Unable to access the camera. Please check permissions and ensure your device has a camera.");
     }
 }
 
-// Flip camera functionality
+// Flip camera
 flip.addEventListener('click', () => {
     useFrontCamera = !useFrontCamera;
     startCamera();
@@ -51,31 +47,36 @@ capture.addEventListener('click', () => {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // Convert canvas to image data
         const imageData = canvas.toDataURL('image/png');
         console.log("Captured Image:", imageData);
 
-        // Optionally send imageData for processing
+        // Upload the captured image for processing
         uploadImage(imageData);
     } else {
-        alert("Unable to capture the image. Please try again.");
+        alert("Unable to capture image. Please try again.");
     }
 });
 
 // Upload captured image
-function uploadImage(imageData) {
-    fetch('/upload', {
-        method: 'POST',
-        body: JSON.stringify({ image: imageData }),
-        headers: { 'Content-Type': 'application/json' }
-    })
-        .then(response => response.json())
-        .then(data => {
-            console.log("Image processed successfully:", data);
-        })
-        .catch(error => {
-            console.error("Error uploading the image:", error);
+async function uploadImage(imageData) {
+    try {
+        const response = await fetch('/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: imageData })
         });
+        const result = await response.json();
+        console.log("OCR Result:", result);
+
+        // Display the extracted text
+        document.getElementById('extracted-text').value = result.extracted_text || 'No text detected.';
+    } catch (error) {
+        console.error("Error uploading the image:", error);
+        alert("Error processing the image. Please try again.");
+    }
 }
 
-// Start camera on page load
+// Initialize the camera on page load
 window.onload = startCamera;
