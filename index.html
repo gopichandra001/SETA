@@ -3,20 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OCR to Salesforce</title>
+    <title>Camera Text Extraction</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h1>OCR to Salesforce</h1>
-    <div id="camera-container">
+    <div class="container">
+        <h1>Text Extraction from Image</h1>
         <video id="camera" autoplay playsinline></video>
         <canvas id="canvas" style="display:none;"></canvas>
-        <div id="controls">
-            <button id="capture" class="button">Capture Image</button>
-            <button id="flip-camera" class="button">Flip Camera</button>
+        <div class="buttons">
+            <button id="captureButton">Capture Image</button>
         </div>
+        <div id="loader" style="display:none;">Processing...</div>
+        <div id="outputText" class="output">No text extracted yet.</div>
     </div>
-    <textarea id="extracted-text" rows="10" cols="50" placeholder="Extracted text will appear here"></textarea>
-    <script src="camera.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
