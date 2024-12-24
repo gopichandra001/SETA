@@ -1,65 +1,37 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-from simple_salesforce import Salesforce
+import cv2
+from PIL import Image
+import numpy as np
+import pytesseract
 
-# Initialize Flask app
-app = Flask(__name__)
-CORS(app)  # Enable CORS for cross-origin requests
+def enhance_image(image_path):
+    # Load the image
+    image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
-# Salesforce credentials
-sf = Salesforce(
-    username="sairamtelagamsetti@sathkrutha.sandbox",  # Replace with your Salesforce username
-    password="Sairam12345@",                          # Replace with your Salesforce password
-    security_token="ZYaDg3Smv8Iw6PiiCW1e2Wlf",        # Replace with your Salesforce security token
-    domain="test"                                     # Use "login" for production, "test" for sandbox
-)
+    # Apply binarization
+    _, binary_image = cv2.threshold(image, 127, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
-@app.route("/api/push", methods=["POST"])
-def push_to_salesforce():
-    """
-    This endpoint receives extracted data from the frontend and stores it in Salesforce.
-    """
-    try:
-        # Parse incoming JSON data
-        data = request.json
-        print("Received Data:", data)  # Log received data for debugging
+    # Deskew the image
+    coords = np.column_stack(np.where(binary_image > 0))
+    angle = cv2.minAreaRect(coords)[-1]
+    if angle < -45:
+        angle = -(90 + angle)
+    else:
+        angle = -angle
+    (h, w) = binary_image.shape[:2]
+    center = (w // 2, h // 2)
+    rotation_matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
+    deskewed_image = cv2.warpAffine(binary_image, rotation_matrix, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
 
-        # Map incoming data to Salesforce fields
-        salesforce_data = {
-            "Product_Name__c": data.get("Product name", ""),
-            "Colour__c": data.get("Colour", ""),
-            "Motor_Type__c": data.get("Motor type", ""),
-            "Frequency__c": data.get("Frequency", ""),
-            "Gross_weight__c": data.get("Gross weight", ""),
-            "Ratio__c": data.get("Ratio", ""),
-            "Motor_Frame__c": data.get("Motor Frame", ""),
-            "Model__c": data.get("Model", ""),
-            "Quantity__c": data.get("Quantity", ""),
-            "Voltage__c": data.get("Voltage", ""),
-            "Material__c": data.get("Material", ""),
-            "Horse_power__c": data.get("Horse power", ""),
-            "Stage__c": data.get("Stage", ""),
-            "GSTIN__c": data.get("GSTIN", ""),
-            "Seller_Address__c": data.get("Seller Address", ""),
-            "Manufacture_date__c": data.get("Manufacture date", ""),
-            "Company_name__c": data.get("Company name", ""),
-            "Customer_care_number__c": data.get("Customer care number", ""),
-            "Total_amount__c": data.get("Total amount", ""),
-            "Other_Specifications__c": data.get("Other Specifications", "")
-        }
+    # Remove noise and speckles
+    cleaned_image = cv2.fastNlMeansDenoising(deskewed_image, None, 30, 7, 21)
 
-        # Create a new record in Salesforce
-        response = sf.Seta_Product_Details__c.create(salesforce_data)
-        print("Salesforce Response:", response)  # Log Salesforce response for debugging
+    # Save the enhanced image temporarily
+    enhanced_path = "enhanced_image.png"
+    cv2.imwrite(enhanced_path, cleaned_image)
+    return enhanced_path
 
-        # Return success message
-        return jsonify({"message": "Data stored in Salesforce successfully.", "id": response["id"]}), 200
-
-    except Exception as e:
-        # Log the error for debugging
-        print("Error:", str(e))
-        return jsonify({"error": str(e)}), 500
-
-
-if __name__ == "__main__":
-    app.run(debug=True)
+def extract_text(image_path):
+    enhanced_image_path = enhance_image(image_path)
+    img = Image.open(enhanced_image_path)
+    text = pytesseract.image_to_string(img)
+    return text
